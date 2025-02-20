@@ -1,6 +1,6 @@
 
 
-import { createContext, useState, useEffect,useContext,useMemo } from "react";
+import { createContext, useState, useEffect,useContext,useMemo,useCallback } from "react";
 
 export const PeerContext = createContext();
 
@@ -12,7 +12,7 @@ export const PeerProvider = ({ children }) => {
  
   // RTCPeerConnection : as our machine dont know the public ip address of our machine so we need to use STUN server to get the public ip address of our machine
 
-
+  const [remoteStream,setRemoteStream] = useState(null);
 
   // useMemo ensures that a single instance of RTCPeerConnection is created and memoized across renders of the component. This is important because you typically want to maintain a persistent connection throughout the component’s lifecycle without reinitializing it on every render.
   const peer = useMemo(() => new RTCPeerConnection({
@@ -50,8 +50,32 @@ const sendStream = async(stream)=>{
   }    
 }
 
+// const handleNegotiationN = useCallback(()=>{
+//   console.log("Negotiation Needed");
+// },[])
+
+const handleTrackEvent = useCallback((event) => {
+  const streams = event.streams;
+  setRemoteStream(streams[0]);
+},[])
+
+
+useEffect(()=>{
+    peer.addEventListener("track", handleTrackEvent);
+    // peer.addEventListener("negotiationneeded",handleNegotiationN)
+    return () => {
+      peer.removeEventListener("track", handleTrackEvent);
+      // peer.removeEventListener("negotiationneeded",handleNegotiationN)
+    };
+},[handleTrackEvent ,peer])
+    //   (event) => {
+    //   // setRemoteStream(event.streams[0]);
+
+    // });
+// },[])
+
   return (
-    <PeerContext.Provider value={{ peer , createoffer , creaeanswer , setRemoteAns , sendStream}}>
+    <PeerContext.Provider value={{ peer , createoffer , creaeanswer , setRemoteAns , sendStream, remoteStream }}>
       {children}
     </PeerContext.Provider>
   );

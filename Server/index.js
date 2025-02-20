@@ -60,7 +60,7 @@ io.on("connection", (socket) => {
         // we will get the socketId of the 2nd user  , as we cant send the offer to the emailId of the new user
         const socketId = emailToSocketId.get(emailId);
         const fromEmailId = socketIdToEmail.get(socket.id); 
-        // this the qst user email id we is calling 
+        // FromEmial is the user A email id who is calling
         socket.to(socketId).emit('incomming-call',{from:fromEmailId,  offer});
     })
 

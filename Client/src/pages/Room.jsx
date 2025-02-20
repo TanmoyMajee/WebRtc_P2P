@@ -7,14 +7,20 @@ import ReactPlayer from 'react-player';
 
 function Room() {
 const [mystream,setMyStream] = useState(null);
+const [remoteEmail,setRemoteEmail] = useState(null);
    const { socket } = useContext(SocketContext);
   const { roomId } = useParams();
-  const {peer,createoffer ,creaeanswer , setRemoteAns , sendStream} = usePeer();
+  const {peer,createoffer ,creaeanswer , setRemoteAns , sendStream , remoteStream } = usePeer();
 
   const getUserMediaStream = useCallback(async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    sendStream(mystream);  // *** Dont know this part
+   try {
+     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    //sendStream(stream);  // *** Dont know this part
     setMyStream(stream);
+    // sendStream(stream);  
+   } catch (error) {
+    console.error("Error getting user media stream:", error);
+   }
   }, []);
 
   // useCallback is used to memoize the function so that it will not create the new function , it will decrease the memory usage
@@ -24,6 +30,7 @@ const [mystream,setMyStream] = useState(null);
       // as the createoffer will return the offer so we will send the offer to the new user who joined the room
       // here we emiting all **** this must be wrong
       socket.emit('call-new-user',{emailId,offer}); // A is callling B
+      setRemoteEmail(emailId); // For A remote email will be the new user who joined the room (B)
   },[createoffer,socket]);
 
   const handleIncomingCall = useCallback(async (from, offer) => {
@@ -31,15 +38,20 @@ const [mystream,setMyStream] = useState(null);
      const answer =  await creaeanswer(offer);
     // now emmit the answer to the user who called us
           // here we emiting all **** this must be wrong 
+          setRemoteEmail(from); // For B remote email will be who is calling him (A) 
     socket.emit('call-accepted',{emailId:from,answer}); // B is accepting the call from A , and sending the answer
   }, []);
 
   const handleCallAccepted = useCallback(async (answer,emailId) => { 
 
     await setRemoteAns(answer);
-
+    // sendStream(mystream);
     console.log("Call accepted by user Ans is :", answer);
   }, [setRemoteAns]);
+
+  const handleNegotiationN = useCallback(()=>{
+    socket.emit('call-new-user',{emailId:remoteEmail,offer:peer.localDescription});
+},[ peer.localDescription,remoteEmail,socket])
 
   useEffect(() => {
      if (!socket) {
@@ -69,13 +81,23 @@ const [mystream,setMyStream] = useState(null);
   }, [socket]);
 
   useEffect(() => {
+    peer.addEventListener("negotiationneeded",handleNegotiationN)
+    return () => {
+      peer.removeEventListener("negotiationneeded",handleNegotiationN)
+    };
+  },[handleNegotiationN,peer])
+
+  useEffect(() => {
     getUserMediaStream();
   }, [getUserMediaStream]);
 
   return (
     <>
     <div> Thi is Rom {roomId}</div>
+    <div> Your are Connetde with : {remoteEmail}</div>
     <ReactPlayer url={mystream} playing muted/>
+    <ReactPlayer url={remoteStream} playing/>
+    <button onClick={()=>{sendStream(mystream)} } >Get Stream</button>
     </>
   )
 }
